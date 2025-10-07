@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Menu, X } from "lucide-react"
 import { useState } from "react"
 
@@ -39,8 +40,9 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop Auth Buttons */}
-          <div className="hidden md:flex md:items-center md:space-x-4">
+          {/* Desktop Auth Buttons & Theme Toggle */}
+          <div className="hidden md:flex md:items-center md:space-x-2">
+            <ThemeToggle />
             <Link href="/login">
               <Button variant="ghost" size="sm">
                 Log in
@@ -51,19 +53,22 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Mobile menu button */}
-          <button
-            type="button"
-            className="md:hidden inline-flex items-center justify-center rounded-md p-2 hover:bg-foreground/5 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-foreground"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            <span className="sr-only">Open main menu</span>
-            {mobileMenuOpen ? (
-              <X className="h-6 w-6" aria-hidden="true" />
-            ) : (
-              <Menu className="h-6 w-6" aria-hidden="true" />
-            )}
-          </button>
+          {/* Mobile menu button & Theme Toggle */}
+          <div className="flex md:hidden items-center gap-2">
+            <ThemeToggle />
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-md p-2 hover:bg-foreground/5 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-foreground"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              <span className="sr-only">Open main menu</span>
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6" aria-hidden="true" />
+              ) : (
+                <Menu className="h-6 w-6" aria-hidden="true" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
