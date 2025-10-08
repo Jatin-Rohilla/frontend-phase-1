@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Utils Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px 5px 5px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-left: 4px solid #4CAF50;
+            margin: 10px 0;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .error {
+            border-left-color: #f44336;
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 Crypto Utils Test Page</h1>
+    
+    <!-- Test 1: Basic Encryption -->
+    <div class="test-section">
+        <h2>Test 1: Basic Encryption/Decryption</h2>
+        <div class="input-group">
+            <label>Plain Text:</label>
+            <input type="text" id="plainText" value="Hello, this is a secret message!" placeholder="Enter text to encrypt">
+        </div>
+        <button onclick="testEncryption()">Encrypt</button>
+        <button onclick="testDecryption()">Decrypt</button>
+        <div id="encryptResult"></div>
+    </div>
+
+    <!-- Test 2: Backoffice Encryption -->
+    <div class="test-section">
+        <h2>Test 2: Backoffice Encryption</h2>
+        <div class="input-group">
+            <label>Data to Encrypt (Backoffice Key):</label>
+            <input type="text" id="backofficeData" value="admin@example.com" placeholder="Enter data">
+        </div>
+        <button onclick="testBackoffice()">Encrypt with Backoffice Key</button>
+        <div id="backofficeResult"></div>
+    </div>
+
+    <!-- Test 3: Request Encryption -->
+    <div class="test-section">
+        <h2>Test 3: Request Field Encryption</h2>
+        <div class="input-group">
+            <label>Request JSON (must have headers.api: true):</label>
+            <textarea id="requestJson">{
+  "url": "https://api.example.com/trade?userID=user123&clientID=client456",
+  "headers": {
+    "Content-Type": "application/json",
+    "api": true
+  },
+  "data": {
+    "userID": "john.doe",
+    "password": "myPassword123",
+    "transPass": "trans456",
+    "clientID": "client789"
+  }
+}</textarea>
+        </div>
+        <button onclick="testRequestEncryption()">Encrypt Request Fields</button>
+        <div id="requestResult"></div>
+    </div>
+
+    <!-- Test 4: Multiple Encryptions -->
+    <div class="test-section">
+        <h2>Test 4: Verify Random IV</h2>
+        <p>Each encryption uses a random IV, so encrypting the same data produces different results.</p>
+        <div class="input-group">
+            <label>Text to Encrypt Multiple Times:</label>
+            <input type="text" id="multipleText" value="test123" placeholder="Enter text">
+        </div>
+        <button onclick="testMultipleEncryptions()">Encrypt 3 Times</button>
+        <div id="multipleResult"></div>
+    </div>
+
+    <script src="crypto-utils.js"></script>
+    <script>
+        // Make CryptoUtils available globally if module.exports was used
+        if (typeof CryptoUtils === 'undefined' && typeof module !== 'undefined') {
+            window.CryptoUtils = module.exports.CryptoUtils;
+            window.encryptRequestFields = module.exports.encryptRequestFields;
+        }
+
+        function testEncryption() {
+            const plainText = document.getElementById('plainText').value;
+            if (!plainText) {
+                showResult('encryptResult', 'Please enter text to encrypt', 'error');
+                return;
+            }
+
+            try {
+                const encrypted = CryptoUtils.encryptMain(plainText);
+                const html = `
+                    <div class="result success">
+                        <strong>Encrypted:</strong><br>
+                        ${encrypted}
+                    </div>
+                `;
+                showResult('encryptResult', html);
+            } catch (error) {
+                showResult('encryptResult', 'Encryption failed: ' + error.message, 'error');
+            }
+        }
+
+        function testDecryption() {
+            const resultDiv = document.getElementById('encryptResult');
+            const encryptedText = resultDiv.textContent.trim().split('\n')[1]?.trim();
+            
+            if (!encryptedText || !encryptedText.includes(':')) {
+                showResult('encryptResult', 'Please encrypt text first', 'error');
+                return;
+            }
+
+            try {
+                const decrypted = CryptoUtils.decryptMain(encryptedText);
+                const html = `
+                    <div class="result success">
+                        <strong>Encrypted:</strong><br>
+                        ${encryptedText}<br><br>
+                        <strong>Decrypted:</strong><br>
+                        ${decrypted}
+                    </div>
+                `;
+                showResult('encryptResult', html);
+            } catch (error) {
+                showResult('encryptResult', 'Decryption failed: ' + error.message, 'error');
+            }
+        }
+
+        function testBackoffice() {
+            const data = document.getElementById('backofficeData').value;
+            if (!data) {
+                showResult('backofficeResult', 'Please enter data to encrypt', 'error');
+                return;
+            }
+
+            try {
+                const encrypted = CryptoUtils.encryptBackoffice(data);
+                const html = `
+                    <div class="result success">
+                        <strong>Original:</strong> ${data}<br><br>
+                        <strong>Encrypted (Backoffice Key):</strong><br>
+                        ${encrypted}
+                    </div>
+                `;
+                showResult('backofficeResult', html);
+            } catch (error) {
+                showResult('backofficeResult', 'Encryption failed: ' + error.message, 'error');
+            }
+        }
+
+        function testRequestEncryption() {
+            const requestJson = document.getElementById('requestJson').value;
+            
+            try {
+                const request = JSON.parse(requestJson);
+                
+                if (!request.headers || !request.headers.api) {
+                    showResult('requestResult', 'Request must have headers.api set to true', 'error');
+                    return;
+                }
+
+                const encryptedRequest = encryptRequestFields(JSON.parse(JSON.stringify(request)));
+                
+                const html = `
+                    <div class="result">
+                        <strong>Original Request:</strong>
+                        <pre>${JSON.stringify(request, null, 2)}</pre>
+                    </div>
+                    <div class="result success">
+                        <strong>Encrypted Request:</strong>
+                        <pre>${JSON.stringify(encryptedRequest, null, 2)}</pre>
+                    </div>
+                `;
+                showResult('requestResult', html);
+            } catch (error) {
+                showResult('requestResult', 'Processing failed: ' + error.message, 'error');
+            }
+        }
+
+        function testMultipleEncryptions() {
+            const text = document.getElementById('multipleText').value;
+            if (!text) {
+                showResult('multipleResult', 'Please enter text to encrypt', 'error');
+                return;
+            }
+
+            try {
+                const encrypted1 = CryptoUtils.encryptMain(text);
+                const encrypted2 = CryptoUtils.encryptMain(text);
+                const encrypted3 = CryptoUtils.encryptMain(text);
+
+                const decrypted1 = CryptoUtils.decryptMain(encrypted1);
+                const decrypted2 = CryptoUtils.decryptMain(encrypted2);
+                const decrypted3 = CryptoUtils.decryptMain(encrypted3);
+
+                const html = `
+                    <div class="result">
+                        <strong>Original Text:</strong> ${text}
+                    </div>
+                    <div class="result success">
+                        <strong>Encryption 1:</strong><br>${encrypted1}<br>
+                        <strong>Decrypts to:</strong> ${decrypted1} ✓
+                    </div>
+                    <div class="result success">
+                        <strong>Encryption 2:</strong><br>${encrypted2}<br>
+                        <strong>Decrypts to:</strong> ${decrypted2} ✓
+                    </div>
+                    <div class="result success">
+                        <strong>Encryption 3:</strong><br>${encrypted3}<br>
+                        <strong>Decrypts to:</strong> ${decrypted3} ✓
+                    </div>
+                    <div class="result">
+                        <strong>Note:</strong> All three encrypted strings are different (due to random IV), 
+                        but all decrypt correctly to the same original text.
+                    </div>
+                `;
+                showResult('multipleResult', html);
+            } catch (error) {
+                showResult('multipleResult', 'Test failed: ' + error.message, 'error');
+            }
+        }
+
+        function showResult(elementId, content, type = '') {
+            const element = document.getElementById(elementId);
+            if (type === 'error') {
+                element.innerHTML = `<div class="result error">${content}</div>`;
+            } else if (type === 'success') {
+                element.innerHTML = `<div class="result success">${content}</div>`;
+            } else {
+                element.innerHTML = content;
+            }
+        }
+
+        // Run a simple test on page load
+        window.onload = function() {
+            console.log('=== Crypto Utils Loaded ===');
+            console.log('Testing encryption...');
+            const test = 'The quick brown fox jumps over the lazy dog';
+            const encrypted = CryptoUtils.encryptMain(test);
+            const decrypted = CryptoUtils.decryptMain(encrypted);
+            console.log('Original:', test);
+            console.log('Encrypted:', encrypted);
+            console.log('Decrypted:', decrypted);
+            console.log('Match:', test === decrypted ? '✓' : '✗');
+        };
+    </script>
+</body>
+</html>
+

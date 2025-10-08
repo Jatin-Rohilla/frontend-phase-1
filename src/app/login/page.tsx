@@ -1,37 +1,153 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft } from "lucide-react"
+import Link from "next/link";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import Image from "next/image";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { validateUserId, validatePassword, validatePin } from "@/lib/api-service";
+
+type LoginStep = "userId" | "password" | "pin";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  // Step management
+  const [currentStep, setCurrentStep] = useState<LoginStep>("userId");
+  
+  // Form fields
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
+  const [securityImageConfirmed, setSecurityImageConfirmed] = useState(false);
+  
+  // UI state
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [securityImage, setSecurityImage] = useState("");
+  const [sessionToken, setSessionToken] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    console.log("Login attempt:", { email, password })
-    setIsLoading(false)
-    
-    // Add your authentication logic here
-  }
+  // Step 1: Validate User ID
+  const handleValidateUserId = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const response = await validateUserId(userId);
+      
+      if (response.success) {
+        setSecurityImage(response.securityImage || "");
+        setCurrentStep("password");
+      } else {
+        setError(response.message || "Invalid User ID");
+      }
+    } catch {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 2: Validate Password
+  const handleValidatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (!securityImageConfirmed) {
+      setError("Please confirm your security image");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await validatePassword(userId, password, securityImageConfirmed);
+      
+      if (response.success) {
+        setSessionToken(response.sessionToken || "");
+        setCurrentStep("pin");
+      } else {
+        setError(response.message || "Invalid Password");
+      }
+    } catch {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 3: Validate PIN
+  const handleValidatePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const response = await validatePin(userId, pin, sessionToken);
+      
+      if (response.success) {
+        // Store token and redirect to dashboard
+        if (response.token) {
+          localStorage.setItem("authToken", response.token);
+          localStorage.setItem("user", JSON.stringify(response.user));
+        }
+        
+        // Redirect to dashboard or home
+        window.location.href = "/dashboard";
+      } else {
+        setError(response.message || "Invalid PIN");
+      }
+    } catch {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Back button handler
+  const handleBack = () => {
+    setError("");
+    if (currentStep === "password") {
+      setCurrentStep("userId");
+      setPassword("");
+      setSecurityImageConfirmed(false);
+      setSecurityImage("");
+    } else if (currentStep === "pin") {
+      setCurrentStep("password");
+      setPin("");
+    }
+  };
+
+  // Get step title
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case "userId":
+        return "Login to start trading";
+      case "password":
+        return `Validate User ${userId}`;
+      case "pin":
+        return userId;
+      default:
+        return "Login";
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8 bg-foreground/5">
-      <div className="w-full max-w-md">
-        {/* Back to Home Link */}
-        <Link 
-          href="/" 
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 sm:px-6 lg:px-4 bg-foreground/5">
+      <div className="w-full -mt-80 max-w-md">
+        <Link
+          href="/"
           className="inline-flex items-center text-sm text-foreground/60 hover:text-foreground mb-8 transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -40,109 +156,191 @@ export default function LoginPage() {
 
         <Card className="shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">
-              Welcome Back
+            <CardTitle className="text-2xl font-bold text-center flex justify-center">
+              <Image
+                src="/logo/mainlogo.png"
+                alt="Logo"
+                width={120}
+                height={40}
+                className="h-10 w-auto"
+                priority
+              />
             </CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access your account
+              {getStepTitle()}
             </CardDescription>
           </CardHeader>
+
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
+            {/* Error Message */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+                {error}
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
+            )}
+
+            {/* Step 1: User ID Validation */}
+            {currentStep === "userId" && (
+              <form onSubmit={handleValidateUserId} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="userId">User ID</Label>
+                  <Input
+                    id="userId"
+                    type="text"
+                    placeholder="Enter your User ID"
+                    value={userId}
+                    onChange={(e) => setUserId(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    autoFocus
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Validating..." : "VALIDATE"}
+                </Button>
+              </form>
+            )}
+
+            {/* Step 2: Password and Security Image */}
+            {currentStep === "password" && (
+              <form onSubmit={handleValidatePassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="userIdDisplay">User ID</Label>
+                  <Input
+                    id="userIdDisplay"
+                    type="text"
+                    value={userId}
+                    disabled
+                    className="bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Security Image */}
+                {securityImage && (
+                  <div className="space-y-2">
+                    <div className="flex items-start space-x-3 p-3 border rounded-md">
+                      <div className="w-16 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
+                        <Image
+                          src={securityImage}
+                          alt="Security Image"
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Checkbox
+                          id="securityConfirm"
+                          checked={securityImageConfirmed}
+                          onChange={(e) => setSecurityImageConfirmed(e.target.checked)}
+                          label="Please confirm your secure access image"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex space-x-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleBack}
+                    disabled={isLoading}
+                  >
+                    BACK
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Submitting..." : "SUBMIT"}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Step 3: PIN Entry */}
+            {currentStep === "pin" && (
+              <form onSubmit={handleValidatePin} className="space-y-4">
+                <div className="flex flex-col items-center mb-4">
+                  <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-600 mb-2">
+                    {userId.substring(0, 2).toUpperCase()}
+                  </div>
+                  <p className="text-sm font-medium">{userId}</p>
                   <Link
                     href="#"
-                    className="text-xs text-foreground/60 hover:text-foreground transition-colors"
+                    className="text-xs text-orange-500 hover:text-orange-600 mt-1"
                   >
-                    Forgot password?
+                    Not you? Switch account
                   </Link>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing in..." : "Sign in"}
-              </Button>
-            </form>
 
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-foreground/10" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-foreground/60">
-                  Or continue with
-                </span>
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pin">Enter PIN</Label>
+                  <div className="relative">
+                    <Input
+                      id="pin"
+                      type={showPin ? "text" : "password"}
+                      placeholder="Enter your PIN"
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value)}
+                      required
+                      disabled={isLoading}
+                      maxLength={6}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPin(!showPin)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPin ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
 
-            {/* Social Login Buttons */}
-            <div className="grid grid-cols-2 gap-4">
-              <Button variant="outline" type="button" disabled={isLoading}>
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  />
-                  <path
-                    fill="currentColor"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-                Google
-              </Button>
-              <Button variant="outline" type="button" disabled={isLoading}>
-                <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                </svg>
-                GitHub
-              </Button>
-            </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Submitting..." : "SUBMIT"}
+                </Button>
+
+                <div className="text-center">
+                  <Link
+                    href="#"
+                    className="text-sm text-foreground/60 hover:text-foreground transition-colors"
+                  >
+                    Forgot PIN?
+                  </Link>
+                </div>
+              </form>
+            )}
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <div className="text-sm text-center text-foreground/60">
-              Don&apos;t have an account?{" "}
-              <Link href="/signup" className="text-foreground hover:underline font-medium">
-                Sign up
-              </Link>
-            </div>
-          </CardFooter>
         </Card>
       </div>
     </div>
-  )
+  );
 }
